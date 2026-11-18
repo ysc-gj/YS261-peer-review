@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YS261 学生小组互评系统</title>
+<style>
+:root{--blue:#2563eb;--bg:#f4f7fb;--ink:#172033;--muted:#64748b;--line:#e5eaf2}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(120deg,#1d4ed8,#4f46e5);color:white;padding:24px max(20px,calc((100% - 1100px)/2));}
+header h1{margin:0 0 8px;font-size:25px}header p{margin:0;opacity:.9}
+main{max-width:1100px;margin:22px auto;padding:0 16px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tabs button,.btn{border:0;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:600;background:#e8edff;color:#2445a5}.tabs button.active,.btn.primary{background:var(--blue);color:white}.btn.gray{background:#eef2f7;color:#334155}.btn.danger{background:#fee2e2;color:#991b1b}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 5px 20px #0f172a08}
+h2{font-size:19px;margin:0 0 16px}h3{font-size:16px;margin:15px 0 8px}
+label{display:block;font-size:14px;color:#475569;margin:10px 0 6px}input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:10px;font:inherit;background:white}textarea{min-height:80px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.score-row{display:grid;grid-template-columns:1fr 90px;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.score-row input{width:90px}
+.small{font-size:13px;color:var(--muted)}.notice{padding:12px;background:#eff6ff;color:#1e40af;border-radius:10px;margin:12px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{background:#f8fafc;border:1px solid var(--line);padding:14px;border-radius:12px}.stat strong{font-size:25px;display:block;margin-top:5px}
+table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f8fafc} .table-wrap{overflow:auto}
+.hidden{display:none!important}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.right{margin-left:auto}
+footer{text-align:center;color:#94a3b8;padding:20px;font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>YS261 学生小组互评系统</h1><p>自评 50% · 互评 50%｜5 项评分，每项 20 分｜36 名学生</p></header>
+<main>
+<div class="tabs">
+<button class="active" data-tab="student">学生评价</button><button data-tab="board">成绩看板</button><button data-tab="admin">管理员</button>
+</div>
+<section id="student" class="tab">
+<div class="panel"><h2>进入评价</h2><div class="grid">
+<div><label>选择评价方式</label><select id="mode"><option value="self">实名自评</option><option value="peer">实名互评</option><option value="anonymous">匿名互评</option></select></div>
+<div><label>你的姓名（自评/实名互评必填）</label><select id="reviewer"></select></div>
+<div><label>评价对象</label><select id="target"></select></div></div>
+<div class="notice" id="modeTip">自评只能评价本人。</div></div>
+<div class="panel"><h2>评分表（每项 0–20 分）</h2><div id="scores"></div><label>评价意见（可选）</label><textarea id="comment" placeholder="写下具体建议或表现评价"></textarea><div class="row" style="margin-top:14px"><button class="btn primary" id="submit">提交评价</button><span class="small">提交后可在本设备成绩看板查看统计。</span></div><p id="msg"></p></div>
+</section>
+<section id="board" class="tab hidden">
+<div class="panel"><h2>班级成绩看板</h2><div class="stats" id="stats"></div><div class="row" style="margin:16px 0"><button class="btn primary" id="export">导出 CSV</button><button class="btn gray" id="refresh">刷新看板</button></div><div class="table-wrap"><table><thead><tr><th>姓名</th><th>自评（100）</th><th>实名互评均分</th><th>匿名互评均分</th><th>互评均分</th><th>综合分（自评50%+互评50%）</th></tr></thead><tbody id="tbody"></tbody></table></div></div>
+</section>
+<section id="admin" class="tab hidden">
+<div class="panel"><h2>管理员后台</h2><p class="small">默认管理员密码：<b>YS261-admin</b>（首次使用后请修改并妥善保存）。</p><div class="grid"><div><label>管理员密码</label><input id="adminPass" type="password" placeholder="输入管理员密码"></div><div style="align-self:end"><button class="btn primary" id="login">登录</button><button class="btn gray" id="logout">退出</button></div></div><div id="adminArea" class="hidden">
+<h3>学生名单（每行一个姓名）</h3><textarea id="roster"></textarea><div class="row"><button class="btn primary" id="saveRoster">保存名单</button><button class="btn danger" id="clearData">清空评价数据</button></div>
+<h3>修改管理员密码</h3><div class="row"><input id="newPass" type="password" placeholder="新密码（至少6位）"><button class="btn primary" id="changePass">修改密码</button></div>
+<p class="small">说明：本版本数据保存在当前浏览器 localStorage，仅适合演示/单设备使用。多人跨设备在线使用需部署后端数据库和身份验证。</p>
+</div></div>
+</section>
+</main><footer>YS261 · Peer Review Demo</footer>
+<script>
+const defaultNames=Array.from({length:36},(_,i)=>`学生${String(i+1).padStart(2,'0')}`);
+const criteria=["功能实现与完成度","PPT展示与表达","个人贡献","小组协作","开发流程/创新表现"];
+const $=id=>document.getElementById(id);
+const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+let names=get("ys261_names",defaultNames),reviews=get("ys261_reviews",[]),adminPass=get("ys261_pass","YS261-admin"),logged=false;
+function save(){localStorage.setItem("ys261_names",JSON.stringify(names));localStorage.setItem("ys261_reviews",JSON.stringify(reviews));}
+function fillSelect(el,arr){el.innerHTML=arr.map(n=>`<option>${escapeHtml(n)}</option>`).join("");}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function renderNames(){fillSelect($("reviewer"),names);fillSelect($("target"),names);$("roster").value=names.join("\n");}
+function renderScores(){$("scores").innerHTML=criteria.map((c,i)=>`<div class="score-row"><span>${i+1}. ${c}</span><input type="number" min="0" max="20" value="20" class="score" aria-label="${c}分"></div>`).join("");}
+function currentMode(){return $("mode").value}
+function updateMode(){let m=currentMode();$("target").disabled=m==="self";if(m==="self")$("target").value=$("reviewer").value;$("modeTip").textContent=m==="self"?"自评只能评价本人，系统会自动将评价对象设为本人。":m==="peer"?"实名互评：记录评价者姓名，不能评价自己。":"匿名互评：不记录评价者姓名，不能评价自己。"}
+$("mode").addEventListener("change",updateMode);$("reviewer").addEventListener("change",updateMode);
+$("submit").onclick=()=>{let mode=currentMode(),reviewer=$("reviewer").value,target=mode==="self"?reviewer:$("target").value;
+if(!names.length)return alert("请先由管理员设置学生名单");if(mode!=="self"&&reviewer===target)return alert("互评不能评价自己！");
+let scores=[...document.querySelectorAll(".score")].map(x=>Number(x.value));if(scores.some(x=>!Number.isFinite(x)||x<0||x>20))return alert("每项分数必须在0到20之间");
+reviews.push({id:Date.now(),mode,reviewer:mode==="anonymous"?"匿名":reviewer,target,scores,total:scores.reduce((a,b)=>a+b,0),comment:$("comment").value,time:new Date().toISOString()});save();$("comment").value="";$("msg").textContent="提交成功！感谢参与评价。";};
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));$(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="board")renderBoard();});
+function avg(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0}
+function renderBoard(){let data=names.map(n=>{let self=reviews.filter(r=>r.mode==="self"&&r.target===n),peer=reviews.filter(r=>r.mode!=="self"&&r.target===n),real=peer.filter(r=>r.mode==="peer"),anon=peer.filter(r=>r.mode==="anonymous");let s=avg(self.map(r=>r.total)),p=avg(peer.map(r=>r.total));return{name:n,self:s,real:avg(real.map(r=>r.total)),anon:avg(anon.map(r=>r.total)),peer:p,final:s*.5+p*.5}});$("stats").innerHTML=`<div class="stat">学生人数<strong>${names.length}</strong></div><div class="stat">评价提交<strong>${reviews.length}</strong></div><div class="stat">已完成自评<strong>${reviews.filter(r=>r.mode==="self").length}</strong></div><div class="stat">互评提交<strong>${reviews.filter(r=>r.mode!=="self").length}</strong></div>`;$("tbody").innerHTML=data.map(d=>`<tr><td>${escapeHtml(d.name)}</td><td>${d.self.toFixed(1)}</td><td>${d.real.toFixed(1)}</td><td>${d.anon.toFixed(1)}</td><td>${d.peer.toFixed(1)}</td><td><b>${d.final.toFixed(1)}</b></td></tr>`).join("");}
+$("refresh").onclick=renderBoard;
+$("export").onclick=()=>{let rows=[["姓名","自评","实名互评均分","匿名互评均分","互评均分","综合分"],...names.map(n=>{let self=avg(reviews.filter(r=>r.mode==="self"&&r.target===n).map(r=>r.total)),peer=reviews.filter(r=>r.mode!=="self"&&r.target===n),real=avg(peer.filter(r=>r.mode==="peer").map(r=>r.total)),anon=avg(peer.filter(r=>r.mode==="anonymous").map(r=>r.total)),p=avg(peer.map(r=>r.total));return[n,self,real,anon,p,self*.5+p*.5]})];let csv="\ufeff"+rows.map(r=>r.join(",")).join("\r\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="YS261互评成绩.csv";a.click();URL.revokeObjectURL(a.href);};
+$("login").onclick=()=>{if($("adminPass").value===adminPass){logged=true;$("adminArea").classList.remove("hidden");alert("管理员登录成功");}else alert("密码错误");};$("logout").onclick=()=>{logged=false;$("adminArea").classList.add("hidden");};
+$("saveRoster").onclick=()=>{if(!logged)return;let arr=$("roster").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);if(!arr.length)return alert("名单不能为空");names=[...new Set(arr)];save();renderNames();renderBoard();alert("名单保存成功");};
+$("clearData").onclick=()=>{if(logged&&confirm("确定清空全部评价数据？此操作不可恢复。")){reviews=[];save();renderBoard();alert("已清空");}};
+$("changePass").onclick=()=>{let p=$("newPass").value;if(!logged||p.length<6)return alert("新密码至少6位");adminPass=p;localStorage.setItem("ys261_pass",p);$("newPass").value="";alert("密码修改成功");};
+renderNames();renderScores();updateMode();renderBoard();
+</script></body></html>
